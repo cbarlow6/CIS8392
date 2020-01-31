@@ -1,0 +1,162 @@
+---
+title: "Assignment3"
+author: "Catresa Barlow"
+date: "4/17/2019"
+output: 
+  html_document:
+    toc: true
+           
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(keras)
+library(readr)
+library(dplyr)
+library(stringr)
+
+```
+
+# Load model, history, and test files
+
+The following models were created using the imdb dataset.
+1. Recurrent Neutral Network (RNN),
+2. Long Short-Term Memory (LSTM),
+3. Gated Recurrent Units (GRU),
+4. Bidirectional LSTM,
+5. Bidirectional GRU,
+6. 1D Convnet
+
+##Load models
+```{r models}
+rnn <- load_model_hdf5("rnn_model.h5")
+lstm <- load_model_hdf5("lstm_model.h5")
+gru <- load_model_hdf5("gru_model.h5")
+bi_lstm <- load_model_hdf5("bi_lstm_model.h5")
+bi_gru <- load_model_hdf5("bi_gru_model.h5")
+conv_1d <- load_model_hdf5("conv_1d_model.h5")
+
+```
+
+##Load model histories
+```{r history}
+rnn_history <- read_rds("rnn_history.rds")
+lstm_history <- read_rds("lstm_history.rds")
+gru_history <- read_rds("gru_history.rds")
+bi_lstm_history <- read_rds("bi_lstm_history.rds")
+bi_gru_history <- read_rds("bi_gru_history.rds")
+conv_1d_history <- read_rds("conv_1d_history.rds")
+
+```
+
+
+##Load test data
+Test data statistics:
+Number of reviews in the test set,  
+Number of positive reviews in the test set, and   
+Number of negative reviews in the test set.
+
+```{r test}
+x_test <- read_rds("x_test.rds")
+y_test <- read_rds("y_test.rds")
+num_reviews <- nrow(x_test)
+cat("Number of reviews- test set", num_reviews)
+
+pos_neg <- count(tibble(y_test), test_data = (y_test==1))
+pos_neg[1,1] <- "Negative"
+pos_neg[2,1] <- "Positive"
+kable(pos_neg, caption = "Number of Positive and Negative Reviews")
+```
+
+
+#Model
+##Model summary
+
+```{r summary}
+summary(rnn)   
+summary(lstm)  
+summary(gru)  
+summary(bi_lstm)
+summary(bi_gru)
+summary(conv_1d)
+
+```
+
+
+##Plot training history
+
+```{r plot}
+plot(rnn_history)
+plot(lstm_history)
+plot(bi_lstm_history)
+plot(gru_history)
+plot(bi_gru_history)
+plot(conv_1d_history)
+
+```
+
+
+##Performance evaluation
+```{r evaluate}
+
+rnn_scores <- rnn  %>% evaluate(x_test, y_test)
+
+lstm_scores <- lstm %>% evaluate(x_test, y_test)
+
+gru_scores <- gru %>% evaluate(x_test, y_test)
+
+bi_lstm_scores <- bi_lstm %>% evaluate(x_test, y_test)
+
+bi_gru_scores <- bi_gru %>% evaluate(x_test, y_test)
+
+conv_1d_scores <- conv_1d %>% evaluate(x_test, y_test)
+
+
+```
+```{r prediction}
+rnn_pred <- rnn %>% predict_classes(x_test)
+lstm_pred <- lstm %>% predict_classes(x_test)
+gru_pred <-  gru %>% predict_classes(x_test)
+bi_lstm_pred  <-bi_lstm %>% predict_classes(x_test)
+bi_gru_pred <-bi_gru %>% predict_classes(x_test)
+conv_1d_pred <-conv_1d %>% predict_classes(x_test)
+
+```
+
+```{r matrix}
+rnn_table <- table(y_test, rnn_pred)
+lstm_table <- table(y_test, lstm_pred)
+gru_table <- table(y_test, gru_pred)
+bi_lstm_table  <-table(y_test, bi_lstm_pred)
+bi_gru_table <-table(y_test, bi_gru_pred)
+conv_1d_table <-table(y_test, conv_1d_pred)
+
+```
+
+
+#Performance
+##Model Summaries of acc, n_tp, n_tn, n_fp, n_fn.
+```{r performance}
+model_name <- c("RNN", "LSTM", "GRU", "Bidirectional GRU", "Bidirectional LSTM", "1D Convnet")
+scores <- c(rnn_scores$acc, lstm_scores$acc, gru_scores$acc, bi_lstm_scores$acc, bi_gru_scores$acc, conv_1d_scores$acc)
+
+n_tp <- c(rnn_table[2,2], lstm_table[2,2], gru_table[2,2], bi_lstm_table[2,2], bi_gru_table[2,2], conv_1d_table[2,2])
+
+n_tn <- c(rnn_table[1,1], lstm_table[1,1], gru_table[1,1], bi_lstm_table[1,1], bi_gru_table[1,1], conv_1d_table[1,1])
+
+n_fp <- c(rnn_table[1,2], lstm_table[1,2], gru_table[1,2], bi_lstm_table[1,2], bi_gru_table[1,2], conv_1d_table[1,2])
+
+n_fn <-  c(rnn_table[2,1], lstm_table[2,1], gru_table[2,1], bi_lstm_table[2,1], bi_gru_table[2,1], conv_1d_table[2,1])
+
+summary <- tibble(model_name = model_name, acc= scores, n_tp=n_tp, n_tn=n_tn, n_fp=n_fp, n_fn=n_fn)
+
+kable(summary, caption = "Performance Summary")
+```
+
+
+#Discussion
+The Bidrectional GRU model provided the greatest accuracy (84.9%) followed by the bidirectional LSTM model(82.3%) and the LSTM model (82%). The accuracy of the 1D Convnet model improved sligthly after adjusting the parameters for epoch, batch_size, and validation_split. The RNN model perfomed the worst of all six models.
+
+
+
